@@ -1,11 +1,13 @@
 // index.js — the whole MVP backend in one file. Run: node server/index.js
 require("dotenv").config();
 const express = require("express");
+const cors = require("cors");
 const { Pool } = require("pg");
 const { answerQuestion, addKnowledge } = require("./rag");
 const { recordUsageAndMaybeBill } = require("./billing");
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
