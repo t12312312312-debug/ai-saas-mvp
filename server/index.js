@@ -10,7 +10,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }, // Supabase requires a secure connection
+});
 
 // --- The core money-making endpoint ---
 app.post("/ask", async (req, res) => {
