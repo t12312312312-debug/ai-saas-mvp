@@ -1,14 +1,21 @@
 // rag.js — turns a question into a search over your knowledge base.
-const OpenAI = require("openai");
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Uses Google Gemini's free API (no credit card needed) instead of OpenAI.
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const EMBED_URL = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_KEY}`;
+const CHAT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
 
 // Turn text into a list of numbers (an "embedding") that captures its meaning.
 async function embed(text) {
-  const res = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
+  const res = await fetch(EMBED_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: { parts: [{ text }] } }),
   });
-  return res.data[0].embedding;
+  const data = await res.json();
+  if (!data.embedding) {
+    throw new Error("Embedding failed: " + JSON.stringify(data));
+  }
+  return data.embedding.values; // 768 numbers
 }
 
 // Add a piece of knowledge to the database (run this once per document/chunk).
@@ -42,14 +49,16 @@ ${context.join("\n---\n")}
 
 Question: ${question}`;
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini", // cheap + fast; upgrade per-query later if needed
-    messages: [{ role: "user", content: prompt }],
+  const res = await fetch(CHAT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
   });
+  const data = await res.json();
+  const answer = data.candidates?.[0]?.content?.parts?.[0]?.text
+    || "Sorry, I couldn't generate an answer.";
 
-  const answer = completion.choices[0].message.content;
-  // Rough cost estimate — refine with actual token counts from the response.
-  const costUsd = (completion.usage.total_tokens / 1_000_000) * 0.15;
+  const costUsd = 0; // Gemini free tier costs nothing
   return { answer, costUsd };
 }
 
