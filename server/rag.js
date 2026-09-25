@@ -1,7 +1,7 @@
 // rag.js — turns a question into a search over your knowledge base.
 // Uses Google Gemini's free API (no credit card needed) instead of OpenAI.
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const EMBED_URL = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_KEY}`;
+const EMBED_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_KEY}`;
 const CHAT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
 
 // Turn text into a list of numbers (an "embedding") that captures its meaning.
@@ -9,7 +9,10 @@ async function embed(text) {
   const res = await fetch(EMBED_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: { parts: [{ text }] } }),
+    body: JSON.stringify({
+      content: { parts: [{ text }] },
+      outputDimensionality: 768, // keep this matching your database column size
+    }),
   });
   const data = await res.json();
   if (!data.embedding) {
